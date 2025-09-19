@@ -1,118 +1,72 @@
-## AngulareCommerceDsNodeExpressTypeScriptPostgreSQL_20
+## AngularLibraryNodeExpress_TypeScriptPostgreSQL_20
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 20.1.2.
 
-**AngulareCommerceDsNodeExpressTypeScriptPostgreSQL_20** is an e-commerce application developed with Angular. Its main purpose is to allow users to browse and purchase albums from different musical groups and genres, as well as manage their orders and shopping carts. The application has two main areas of functionality: one for general users and one for administrators. For general users (Registration and Login, Product Navigation, Shopping Cart, and Order Management). For administrators (Genre Management, Group Management, Album Management, User Management, Order Management (Admin), and Cart Management (Admin).
-
-![AngulareCommderceDs](img/UML.png)
-
-AngulareCommerceDsNodeExpressTypeScriptPostgreSQL_20/  
+AngularLibraryNodeExpress_TypeScriptPostgreSQL_20/  
 ├───app/  
-│   ├───ecommerce/  
-│   │   ├───AdminOrders/  
-│   │   │   ├───AdminOrdersComponent.css  
-│   │   │   ├───AdminOrdersComponent.html  
-│   │   │   └───AdminOrdersComponent.ts  
-│   │   ├───CartDetails/  
-│   │   │   ├───CartDetailsComponent.css  
-│   │   │   ├───CartDetailsComponent.html  
-│   │   │   └───CartDetailsComponent.ts  
-│   │   ├───carts/  
-│   │   │   ├───CartsComponent.css  
-│   │   │   ├───CartsComponent.html  
-│   │   │   └───CartsComponent.ts  
-│   │   ├───genres/  
-│   │   │   ├───GenresComponent.html      
-│   │   │   └───GenresComponent.ts  
-│   │   ├───groups/  
-│   │   │   ├───GroupsComponent.html      
-│   │   │   └───GroupsComponent.ts  
-│   │   ├───listgroups/  
-│   │   │   ├───ListgroupsComponent.html            
-│   │   │   └───ListgroupsComponent.ts  
-│   │   ├───listrecords/  
-│   │   │   ├───ListrecordsComponent.html      
-│   │   │   └───ListrecordsComponent.ts  
-│   │   ├───orders/  
-│   │   │   ├───OrdersComponent.html  
-│   │   │   └───OrdersComponent.ts  
-│   │   ├───records/  
-│   │   │   ├───RecordsComponent.css  
-│   │   │   ├───RecordsComponent.html  
-│   │   │   └───RecordsComponent.ts  
-│   │   ├───services/  
-│   │   │   ├───CartService.ts  
-│   │   │   ├───CartDetailService.ts  
-│   │   │   ├───GenresService.ts  
-│   │   │   ├───GroupsService.ts  
-│   │   │   ├───OrderService.ts  
-│   │   │   ├───RecordsService.ts  
-│   │   │   ├───StockService.ts  
-│   │   │   └───UsersService.ts  
-│   │   ├───users/  
-│   │   │   ├───UsersComponent.html  
-│   │   │   └───UsersComponent.ts  
-│   │   ├───EcommerceComponent.html  
-│   │   ├───EcommerceComponent.ts  
-│   │   ├───EcommerceInterface.ts    
 │   ├───guards/  
 │   │   └───AuthGuardService.ts  
-│   ├───interfaces/  
-│   │   ├───LoginInterface.ts  
-│   │   └───RegisterInterface.ts  
+│   ├───library/  
+│   │   ├───authors/  
+│   │   │   ├───AuthorsComponent.css  
+│   │   │   ├───AuthorsComponent.html  
+│   │   │   └───AuthorsComponent.ts  
+│   │   ├───books/  
+│   │   │   ├───BooksComponent.css  
+│   │   │   ├───BooksComponent.html  
+│   │   │   └───BooksComponent.ts  
+│   │   ├───publishing-houses/  
+│   │   │   ├───PublishingHousesComponent.css  
+│   │   │   ├───PublishingHousesComponent.html  
+│   │   │   └───PublishingHousesComponent.ts  
+│   │   ├───interfaces/  
+│   │   │   └───LoginInterface.ts  
+│   │   ├───LibraryComponent.html  
+│   │   ├───LibraryComponent.ts  
+│   │   ├───LibraryInterface.ts  
+│   │   └───LibraryService.ts  
 │   ├───services/  
-│   │   ├───AppService.ts  
-│   │   └───UserService.ts  
+│   │   └───AppService.ts  
 │   ├───shared/  
+│   │   ├───navbar/  
+│   │   │   ├───NavbarComponent.html  
+│   │   │   └───NavbarComponent.ts  
+│   ├───start/  
 │   │   ├───login/  
 │   │   │   ├───LoginComponent.css  
 │   │   │   ├───LoginComponent.html  
 │   │   │   └───LoginComponent.ts  
-│   │   ├───navbar/  
-│   │   │   ├───NavbarComponent.html  
-│   │   │   └───NavbarComponent.ts  
-│   │   ├───register/  
-│   │   │   ├───RegisterComponent.css  
-│   │   │   ├───RegisterComponent.html  
-│   │   │   └───RegisterComponent.ts  
-│   ├───AppComponent.html    
-│   ├───AppComponent.ts       
-│   └───AppRoutes.ts    
+│   │   ├───not-found/  
+│   │   │   ├───NotFoundComponent.css  
+│   │   │   ├───NotFoundComponent.html  
+│   │   │   └───NotFoundComponent.ts  
+│   ├───AppComponent.html  
+│   ├───AppComponent.ts  
+│   ├───AppConfig.ts  
+│   ├───AppRoutingModule.ts  
+│   └───Routes.ts  
 ├───environments/  
-│   ├───environment.development.ts  
-│   └───environment.ts  
-├───main.ts   
-├───angular.json 
-└───package.json  
+│   ├───Environment.ts  
+│   └───EnvironmentDevelopment.ts   
+├───main.ts    
+├───angular.json  
+├───package.json    
+└───tsconfig.json  
 
-![AngulareCommderceDs](img/01.png)
-![AngulareCommderceDs](img/02.png)
-![AngulareCommderceDs](img/03.png)
-![AngulareCommderceDs](img/04.png)
-![AngulareCommderceDs](img/05.png)
-![AngulareCommderceDs](img/06.png)
-![AngulareCommderceDs](img/07.png)
-![AngulareCommderceDs](img/08.png)
-![AngulareCommderceDs](img/09.png)
-![AngulareCommderceDs](img/10.png)
-![AngulareCommderceDs](img/11.png)
-![AngulareCommderceDs](img/12.png)
-![AngulareCommderceDs](img/13.png)
-![AngulareCommderceDs](img/14.png)
-![AngulareCommderceDs](img/15.png)
-![AngulareCommderceDs](img/16.png)
-![AngulareCommderceDs](img/17.png)
+![AngularLibraryExpress](img/1.png)
+![AngularLibraryExpress](img/2.png)
+![AngularLibraryExpress](img/3.png)
+
 
 ## environment
 
-```javascript
+```
 export const environment = {
-  urlAPI: 'http://localhost:3000/api/',
-  adminEmail: 'ADMIN@gmail.com'
+  urlAPI: 'http://localhost:3000/',
 };
 
 ```
 
-[DeepWiki moraisLuismNet/AngulareCommerceDsNodeExpressTypeScriptPostgreSQL_20](https://deepwiki.com/moraisLuismNet/AngulareCommerceDsNodeExpressTypeScriptPostgreSQL_20)
+[DeepWiki moraisLuismNet/AngularLibraryNodeExpressTypeScriptPostgreSQL_20](https://deepwiki.com/moraisLuismNet/AngularLibraryNodeExpressTypeScriptPostgreSQL_20)
 
 
 ## Development server
