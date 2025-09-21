@@ -12,6 +12,16 @@ export class GroupsService {
   urlAPI = environment.urlAPI;
   constructor(private http: HttpClient, private authGuard: AuthGuard) {}
 
+  // Helper method to validate URLs
+  private isValidUrl(url: string): boolean {
+    try {
+      new URL(url);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
   getGroups(): Observable<IGroup[]> {
     const headers = this.getHeaders();
     
@@ -43,9 +53,6 @@ export class GroupsService {
                 } else {
                   imageUrl = cleanPath;
                 }
-                
-                // Log the constructed path for debugging
-                console.log(`Constructed image path for group ${group.IdGroup}:`, imageUrl);
               }
 
               return {
@@ -77,11 +84,11 @@ export class GroupsService {
     const headers = this.getHeaders();
     const formData = new FormData();
     
-    // Ensure all required fields are included
+    // Validate required fields
     if (!group.NameGroup || group.MusicGenreId === undefined) {
       const error = new Error('Missing required fields: ' + 
-        (!group.NameGroup ? 'NameGroup, ' : '') +
-        (group.MusicGenreId === undefined ? 'MusicGenreId' : '')
+        (!group.NameGroup ? 'Group name, ' : '') +
+        (group.MusicGenreId === undefined ? 'Music genre ID' : '')
       );
       console.error('Validation error:', error.message);
       return new Observable(subscriber => {
@@ -89,21 +96,22 @@ export class GroupsService {
       });
     }
     
-    console.log('Adding group with data:', {
-      NameGroup: group.NameGroup,
-      MusicGenreId: group.MusicGenreId,
-      hasPhoto: !!group.Photo
-    });
-    
-    // Append all required fields with the exact names expected by the server
+    // Append required fields
     formData.append('NameGroup', group.NameGroup);
     formData.append('MusicGenreId', group.MusicGenreId.toString());
     
-    // Only append photo if it exists
+    // Handle the image (URL or file)
     if (group.Photo) {
+      // If there is a file, attach it
       formData.append('Photo', group.Photo);
+    } else if (group.ImageGroup && group.ImageGroup.trim() !== '') {
+      // If there is an image URL and it's not empty, attach it as a regular form field
+      formData.append('ImageGroup', group.ImageGroup.trim());
+    } else {
+      // If there is no image, ensure ImageGroup is null
+      formData.append('ImageGroup', '');
     }
-
+    
     return this.http.post<IGroup>(`${this.urlAPI}groups`, formData, {
       headers,
       observe: 'response'
@@ -143,9 +151,14 @@ export class GroupsService {
     formData.append('NameGroup', group.NameGroup);
     formData.append('MusicGenreId', group.MusicGenreId.toString());
     
-    // Only append photo if it exists
+    // Handle the image (URL or file)
     if (group.Photo) {
+      // If there is a file, attach it
       formData.append('photo', group.Photo);
+    } else if (group.ImageGroup !== undefined) {
+      // If there is an image URL, attach it as a regular form field
+      // Even if it's an empty string, so the backend can handle it
+      formData.append('ImageGroup', group.ImageGroup || '');
     }
 
     return new Observable<IGroup>(subscriber => {

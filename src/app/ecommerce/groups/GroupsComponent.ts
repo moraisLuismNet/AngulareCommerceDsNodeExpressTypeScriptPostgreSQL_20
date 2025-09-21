@@ -12,7 +12,6 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { DialogModule } from 'primeng/dialog';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { TableModule } from 'primeng/table';
-import { FileUploadModule } from 'primeng/fileupload';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageModule } from 'primeng/message';
 import { DropdownModule } from 'primeng/dropdown';
@@ -37,7 +36,6 @@ import { environment } from '../../../environments/environment';
         InputNumberModule,
         DialogModule,
         ConfirmDialogModule,
-        FileUploadModule,
         TooltipModule,
         MessageModule,
         DropdownModule
@@ -45,25 +43,24 @@ import { environment } from '../../../environments/environment';
     templateUrl: './GroupsComponent.html',
     providers: [ConfirmationService, MessageService]
 })
-export class GroupsComponent implements OnInit, OnDestroy {
+export class GroupsComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('form') form!: NgForm;
-  @ViewChild('fileInput') fileInput!: ElementRef;
   visibleError = false;
   errorMessage = '';
   groups: IGroup[] = [];
   filteredGroups: IGroup[] = [];
   visibleConfirm = false;
-  imageGroup = '';
   visiblePhoto = false;
   photo = '';
   searchText: string = '';
+  selectedGenreId: string = ''; 
 
   group: IGroup = {
     IdGroup: 0,
     NameGroup: '',
     ImageGroup: null,
     Photo: null,
-    MusicGenreId: 0,
+    MusicGenreId: '',  // Using empty string as default value
     MusicGenreName: '',
     MusicGenre: '',
   };
@@ -112,10 +109,15 @@ export class GroupsComponent implements OnInit, OnDestroy {
   getGenres() {
     this.genresService.getGenres().subscribe({
       next: (genres: IGenre[]) => {
-        this.genres = genres.map(genre => ({
-          label: genre.NameMusicGenre,
-          value: genre.IdMusicGenre
-        }));
+        // Map genres ensuring values are strings
+        this.genres = genres
+          .filter(genre => genre.IdMusicGenre !== undefined && genre.NameMusicGenre !== undefined)
+          .map(genre => ({
+            label: genre.NameMusicGenre!,
+            value: genre.IdMusicGenre!.toString()
+          }));
+        
+        // Detect changes
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -131,6 +133,11 @@ export class GroupsComponent implements OnInit, OnDestroy {
     this.filteredGroups = this.groups.filter((group) =>
       group.NameGroup.toLowerCase().includes(this.searchText.toLowerCase())
     );
+  }
+
+  // Function to compare values in the select
+  compareFn(value1: any, value2: any): boolean {
+    return value1 === value2;
   }
 
   private setupTableResizeObserver(): void {
@@ -177,41 +184,152 @@ export class GroupsComponent implements OnInit, OnDestroy {
     this.filterGroups();
   }
 
+  // Reset form
+  private resetForm() {
+    // Reset the group object
+    this.group = {
+      IdGroup: 0,
+      NameGroup: '',
+      ImageGroup: '',
+      Photo: null,
+      MusicGenreId: '',
+      MusicGenreName: '',
+      MusicGenre: '',
+    };
+    
+    // Reset the selected value of the select
+    this.selectedGenreId = '';
+    
+    // Reset the form if it exists
+    if (this.form) {
+      // Save the form reference
+      const formRef = this.form;
+      
+      // Reset the form
+      formRef.resetForm();
+      
+      // Ensure the select shows the default option
+      setTimeout(() => {
+        if (formRef) {
+          // Use patchValue with emitEvent false to avoid infinite loops
+          formRef.form.patchValue({
+            name: '',
+            genre: '',
+            imageUrl: ''
+          }, { emitEvent: false });
+          
+          // Mark as untouched and pristine
+          formRef.form.markAsPristine();
+          formRef.form.markAsUntouched();
+          formRef.form.updateValueAndValidity();
+        }
+      });
+    }
+    
+    // Force view update
+    this.cdr.detectChanges();
+  }
+
+  // Handle errors
+  private handleError(err: any) {
+    console.error('Error:', err);
+    this.visibleError = true;
+    this.errorMessage = err?.error?.message || 'An error occurred';
+    this.cdr.detectChanges();
+  }
+
+
   save() {
-    if (this.group.IdGroup === 0) {
-      this.groupsService.addGroup(this.group).subscribe({
-        next: (data) => {
-          this.visibleError = false;
-          this.form.reset();
-          this.getGroups();
-        },
-        error: (err) => {
-          console.log(err);
-          this.visibleError = true;
-          this.controlError(err);
-        },
-      });
+    // Synchronize the selected value with the model
+    this.group.MusicGenreId = this.selectedGenreId;
+    
+    // If there is an image URL, ensure it is a valid URL
+    if (this.group.ImageGroup && this.group.ImageGroup.trim() !== '') {
+      if (!this.isValidUrl(this.group.ImageGroup)) {
+        this.visibleError = true;
+        this.errorMessage = 'Please enter a valid image URL';
+        this.cdr.detectChanges();
+        return;
+      }
+      // Ensure the URL is clean (no leading or trailing spaces)
+      this.group.ImageGroup = this.group.ImageGroup.trim();
     } else {
-      this.groupsService.updateGroup(this.group).subscribe({
-        next: (data) => {
-          this.visibleError = false;
-          this.cancelEdition();
-          this.form.reset();
-          this.getGroups();
-        },
-        error: (err) => {
-          this.visibleError = true;
-          this.controlError(err);
-        },
-      });
+      // If no image URL, set as null
+      this.group.ImageGroup = null;
+    }
+    
+    const saveObservable = this.group.IdGroup === 0 
+      ? this.groupsService.addGroup(this.group)
+      : this.groupsService.updateGroup(this.group);
+
+    saveObservable.subscribe({
+      next: (data) => {
+        this.visibleError = false;
+        this.resetForm();
+        this.getGroups();
+      },
+      error: (err) => {
+        console.error('Error saving group:', err);
+        this.handleError(err);
+      }
+    });
+  }
+  
+  // Helper method to validate URLs
+  private isValidUrl(url: string): boolean {
+    try {
+      new URL(url);
+      return true;
+    } catch (err) {
+      return false;
     }
   }
 
   edit(group: IGroup) {
-    this.group = { ...group };
-    this.group.PhotoName = group.ImageGroup
-      ? this.extractNameImage(group.ImageGroup)
+    // Create a copy of the group to avoid reference issues
+    const groupCopy = { ...group };
+    
+    // Ensure MusicGenreId is a string and defined
+    const musicGenreId = (groupCopy.MusicGenreId !== undefined && groupCopy.MusicGenreId !== null) 
+      ? groupCopy.MusicGenreId.toString() 
       : '';
+    
+    // Update the group with the genre ID as a string
+    this.group = {
+      ...groupCopy,
+      MusicGenreId: musicGenreId
+    };
+    
+    // Set the selected value in the select
+    this.selectedGenreId = musicGenreId;
+    
+    // Force the form model update
+    if (this.form) {
+      // Save the form reference
+      const formRef = this.form;
+      
+      // Reset the form
+      formRef.resetForm();
+      
+      // Use setTimeout to ensure the form updates in the next change detection cycle
+      setTimeout(() => {
+        if (formRef) {
+          // Update the form values using patchValue
+          formRef.form.patchValue({
+            name: groupCopy.NameGroup || '',
+            genre: musicGenreId,
+            imageUrl: groupCopy.ImageGroup || ''
+          }, { emitEvent: false });
+          
+          // Mark as touched to show validations if needed
+          formRef.form.markAllAsTouched();
+          formRef.form.updateValueAndValidity();
+        }
+      }, 0);
+    }
+    
+    // Force change detection
+    this.cdr.detectChanges();
   }
 
   extractNameImage(url: string): string {
@@ -219,15 +337,27 @@ export class GroupsComponent implements OnInit, OnDestroy {
   }
 
   cancelEdition() {
+    // Reset the group object
     this.group = {
       IdGroup: 0,
       NameGroup: '',
-      ImageGroup: null,
+      ImageGroup: '',
       Photo: null,
-      MusicGenreId: 0,
+      MusicGenreId: '',
       MusicGenreName: '',
       MusicGenre: '',
     };
+    
+    // Reset the selected value
+    this.selectedGenreId = '';
+    
+    // Reset the form if it exists
+    if (this.form) {
+      this.form.reset();
+    }
+    
+    // Force change detection
+    this.cdr.detectChanges();
   }
 
   confirmDelete(group: IGroup) {
@@ -245,9 +375,9 @@ export class GroupsComponent implements OnInit, OnDestroy {
     this.groupsService.deleteGroup(id).subscribe({
       next: (data) => {
         this.visibleError = false;
-        this.form.reset({
-          nameMusicGenre: '',
-        });
+        // Use resetForm to clear the form and reset the select
+        this.resetForm();
+        // Update the list of groups
         this.getGroups();
       },
       error: (err) => {
@@ -257,7 +387,7 @@ export class GroupsComponent implements OnInit, OnDestroy {
     });
   }
 
-  controlError(err: any) {
+  private controlError(err: any) {
     if (err.error && typeof err.error === 'object' && err.error.message) {
       this.errorMessage = err.error.message;
     } else if (typeof err.error === 'string') {
@@ -265,14 +395,8 @@ export class GroupsComponent implements OnInit, OnDestroy {
     } else {
       this.errorMessage = 'An unexpected error has occurred';
     }
-  }
-
-  onChange(event: any) {
-    const file = event.target.files[0];
-    if (file) {
-      this.group.Photo = file;
-      this.group.PhotoName = file.name;
-    }
+    this.visibleError = true;
+    this.cdr.detectChanges();
   }
 
   showImage(group: IGroup): void {
@@ -311,7 +435,7 @@ export class GroupsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Clear the resize observer
+    // Clean up the resize observer
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }

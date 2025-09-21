@@ -579,16 +579,6 @@ export class ListrecordsComponent implements OnInit {
     if (event) {
       event.stopPropagation();
     }
-    console.log('Button state:', {
-      recordId: record.IdRecord,
-      title: record.TitleRecord,
-      stock: record.stock,
-      inCart: record.inCart || false,
-      amount: record.Amount || 0,
-      isLoggedIn: this.isLoggedIn(),
-      cartEnabled: this.cartEnabled,
-      isAddingToCart: this.isAddingToCart
-    });
   }
 
   onAddToCart(event: Event, record: IRecord): void {

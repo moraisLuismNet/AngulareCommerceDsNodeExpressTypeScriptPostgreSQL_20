@@ -60,7 +60,6 @@ import { environment } from "src/environments/environment";
 })
 export class RecordsComponent implements OnInit {
   @ViewChild("form") form!: NgForm;
-  @ViewChild("fileInput") fileInput!: ElementRef;
   @ViewChild("recordsTable") recordsTable!: ElementRef<HTMLTableElement>;
   visibleError = false;
   errorMessage = "";
@@ -88,7 +87,6 @@ export class RecordsComponent implements OnInit {
   };
 
   // Flag to track if a file has been selected
-  fileSelected: boolean = false;
 
   groups: any[] = [];
   recordService: any;
@@ -160,45 +158,93 @@ export class RecordsComponent implements OnInit {
   }
 
   getRecords() {
-    
     this.recordsService.getRecords().subscribe({
-      next: (data: any) => {
-        
-        if (!data) {
+      next: (response: any) => {
+        if (!response) {
           console.error('No data was received from the service');
           this.errorMessage = 'No data was received from the service';
           this.visibleError = true;
           return;
         }
         
-        const recordsArray = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.$values)
-          ? data.$values
-          : Array.isArray(data?.data)
-          ? data.data
-          : [];
+        // Handle different response formats
+        let recordsArray = [];
+        
+        // Direct array response
+        if (Array.isArray(response)) {
+          recordsArray = response;
+        }
+        // Response with $values property (common in .NET)
+        else if (Array.isArray(response.$values)) {
+          recordsArray = response.$values;
+        }
+        // Response with data property
+        else if (Array.isArray(response.data)) {
+          recordsArray = response.data;
+        }
+        // Response with data as an object containing $values
+        else if (response.data && Array.isArray(response.data.$values)) {
+          recordsArray = response.data.$values;
+        }
+        // Single record response
+        else if (response.data && typeof response.data === 'object') {
+          recordsArray = [response.data];
+        }
         
         if (recordsArray.length === 0) {
           console.warn('No records were received from the service');
         }
+
+        // Normalize the data to ensure consistent property names
+        recordsArray = recordsArray.map((record: any) => {
+          // Create a new object to avoid modifying the original
+          const normalizedRecord = { ...record };
+          
+          // Handle case where server returns Stock instead of stock
+          if (normalizedRecord.Stock !== undefined && normalizedRecord.stock === undefined) {
+            normalizedRecord.stock = normalizedRecord.Stock;
+            delete normalizedRecord.Stock;
+          }
+          
+          // Ensure stock is a number
+          if (typeof normalizedRecord.stock === 'string') {
+            normalizedRecord.stock = parseInt(normalizedRecord.stock, 10) || 0;
+          }
+          
+          // Ensure image URL is properly set
+          // Prefer ImageRecord if available, otherwise use PhotoName
+          if (normalizedRecord.ImageRecord && normalizedRecord.ImageRecord.trim() !== '') {
+            normalizedRecord.PhotoName = normalizedRecord.ImageRecord.trim();
+          } else if (normalizedRecord.PhotoName && normalizedRecord.PhotoName.trim() !== '') {
+            normalizedRecord.ImageRecord = normalizedRecord.PhotoName.trim();
+          } else {
+            normalizedRecord.PhotoName = '';
+            normalizedRecord.ImageRecord = '';
+          }
+          
+          return normalizedRecord;
+        });
 
         // Get the groups to assign names
         this.groupsService.getGroups().subscribe({
           next: (groupsResponse: any) => {
             const groups = Array.isArray(groupsResponse)
               ? groupsResponse
-              : Array.isArray(groupsResponse.$values)
+              : Array.isArray(groupsResponse?.$values)
               ? groupsResponse.$values
               : [];
 
             // Assign the group name to each record
             recordsArray.forEach((record: IRecord) => {
               const group = groups.find(
-                (g: { idGroup: number | null }) => g.idGroup === record.GroupId
+                (g: any) => g.IdGroup === record.GroupId || g.idGroup === record.GroupId
               );
               if (group) {
-                record.GroupName = group.nameGroup;
+                record.GroupName = group.NameGroup || group.nameGroup || '';
+                // Ensure GroupId is a number
+                if (typeof record.GroupId === 'string') {
+                  record.GroupId = parseInt(record.GroupId, 10);
+                }
               }
             });
 
@@ -274,24 +320,6 @@ export class RecordsComponent implements OnInit {
     });
   }
 
-  onChange(event: any) {
-    const file = event.target.files;
-
-    if (file && file.length > 0) {
-      this.record.Photo = file[0];
-      this.record.PhotoName = file[0].name;
-      this.fileSelected = true;
-    } else {
-      this.fileSelected = false;
-      this.record.Photo = null;
-      this.record.PhotoName = null;
-    }
-  }
-
-  onAceptar() {
-    this.fileInput.nativeElement.value = "";
-  }
-
   showImage(record: IRecord): void {
     // Toggle visibility if clicking the same record's image
     if (this.visiblePhoto && this.record?.IdRecord === record.IdRecord) {
@@ -328,7 +356,6 @@ export class RecordsComponent implements OnInit {
   }
 
   save() {
-    
     // Validate required fields
     if (!this.record.TitleRecord || this.record.TitleRecord.trim() === '') {
       this.visibleError = true;
@@ -342,79 +369,130 @@ export class RecordsComponent implements OnInit {
       return;
     }
 
+    // Validate group is selected
+    if (!this.record.GroupId) {
+      this.visibleError = true;
+      this.errorMessage = 'Please select a group';
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Please select a group',
+        life: 3000
+      });
+      return;
+    }
+
+    // Create a copy of the record to send to the server
+    const recordToSend = { ...this.record };
+    
+    // Ensure stock is a number
+    if (typeof recordToSend.stock === 'string') {
+      recordToSend.stock = parseInt(recordToSend.stock as any, 10);
+    }
+    
+    // Ensure the image URL is properly set
+    // If PhotoName is empty but we have an image URL in ImageRecord, use that
+    if ((!recordToSend.PhotoName || recordToSend.PhotoName.trim() === '') && 
+        recordToSend.ImageRecord && recordToSend.ImageRecord.trim() !== '') {
+      recordToSend.PhotoName = recordToSend.ImageRecord.trim();
+    }
+    
+    // If we have PhotoName but no ImageRecord, set ImageRecord to match
+    if (recordToSend.PhotoName && recordToSend.PhotoName.trim() !== '' && 
+        (!recordToSend.ImageRecord || recordToSend.ImageRecord.trim() === '')) {
+      recordToSend.ImageRecord = recordToSend.PhotoName.trim();
+    }
+
     if (this.record.IdRecord === 0) {
       // Add new record
-      this.recordsService.addRecord(this.record).subscribe({
-        next: (data) => {
+      this.recordsService.addRecord(recordToSend).subscribe({
+        next: (response: any) => {
+          // Normalize the response data if needed
+          if (response.data) {
+            if (response.data.Stock !== undefined && response.data.stock === undefined) {
+              response.data.stock = response.data.Stock;
+              delete response.data.Stock;
+            }
+          }
+          
           this.visibleError = false;
           this.messageService.add({
             severity: 'success',
             summary: 'Success',
-            detail: 'Record added successfully',
+            detail: response?.message || 'Record added successfully',
             life: 3000
           });
-          this.form.reset();
           this.cancelEdition();
           this.getRecords();
         },
         error: (err) => {
           console.error('Error adding record:', err);
-          this.visibleError = true;
-          
-          // Enhanced error handling
-          let errorMessage = 'An error occurred while adding the record';
-          
-          if (err.status === 400) {
-            // Handle 400 Bad Request with validation errors
-            if (err.error && typeof err.error === 'object') {
-              // If the error has specific validation messages
-              const errorObj = err.error;
-              errorMessage = 'Validation error: ' + Object.values(errorObj).flat().join(' ');
-            } else if (err.error && typeof err.error === 'string') {
-              errorMessage = err.error;
-            }
-          } else if (err.status === 401) {
-            errorMessage = 'Authentication required. Please log in again.';
-          } else if (err.status === 403) {
-            errorMessage = 'You do not have permission to perform this action.';
-          } else if (err.status === 404) {
-            errorMessage = 'The requested resource was not found.';
-          } else if (err.status >= 500) {
-            errorMessage = 'A server error occurred. Please try again later.';
-          }
-          
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: errorMessage,
-            life: 5000
-          });
-          
-          this.controlError(err);
+          this.handleSaveError(err);
         },
       });
     } else {
       // Update existing record
-      this.recordsService.updateRecord(this.record).subscribe({
-        next: (data) => {
+      this.recordsService.updateRecord(recordToSend).subscribe({
+        next: (response: any) => {
+          // Normalize the response data if needed
+          if (response.data) {
+            if (response.data.Stock !== undefined && response.data.stock === undefined) {
+              response.data.stock = response.data.Stock;
+              delete response.data.Stock;
+            }
+          }
+          
           this.visibleError = false;
           this.messageService.add({
             severity: 'success',
             summary: 'Success',
-            detail: 'Record updated successfully',
+            detail: response?.message || 'Record updated successfully',
             life: 3000
           });
           this.cancelEdition();
-          this.form.reset();
           this.getRecords();
         },
         error: (err) => {
           console.error('Error updating record:', err);
-          this.visibleError = true;
-          this.controlError(err);
+          this.handleSaveError(err);
         },
       });
     }
+  }
+
+  private handleSaveError(err: any) {
+    this.visibleError = true;
+    
+    // Enhanced error handling
+    let errorMessage = 'An error occurred while processing your request';
+    
+    if (err.status === 400) {
+      // Handle 400 Bad Request with validation errors
+      if (err.error && typeof err.error === 'object') {
+        // If the error has specific validation messages
+        const errorObj = err.error;
+        errorMessage = 'Validation error: ' + Object.values(errorObj).flat().join(' ');
+      } else if (err.error && typeof err.error === 'string') {
+        errorMessage = err.error;
+      }
+    } else if (err.status === 401) {
+      errorMessage = 'Authentication required. Please log in again.';
+    } else if (err.status === 403) {
+      errorMessage = 'You do not have permission to perform this action.';
+    } else if (err.status === 404) {
+      errorMessage = 'The requested resource was not found.';
+    } else if (err.status >= 500) {
+      errorMessage = 'A server error occurred. Please try again later.';
+    }
+    
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: errorMessage,
+      life: 5000
+    });
+    
+    this.controlError(err);
   }
 
   confirmDelete(record: IRecord) {
@@ -478,35 +556,43 @@ export class RecordsComponent implements OnInit {
   }
 
   edit(record: IRecord) {
-    
     // Create a deep copy of the record to avoid modifying the original
-    this.record = JSON.parse(JSON.stringify(record));
+    const recordCopy = JSON.parse(JSON.stringify(record));
+    
+    // Handle case where server returns Stock instead of stock
+    if (recordCopy.Stock !== undefined && recordCopy.stock === undefined) {
+      recordCopy.stock = recordCopy.Stock;
+      delete recordCopy.Stock;
+    }
     
     // Ensure required fields have default values
-    this.record.stock = record.stock ?? 1;
-    this.record.Price = record.Price ?? 0;
-    this.record.Discontinued = record.Discontinued ?? false;
+    recordCopy.stock = recordCopy.stock ?? 1;
+    recordCopy.Price = recordCopy.Price ?? 0;
+    recordCopy.Discontinued = recordCopy.Discontinued ?? false;
     
-    // Handle the photo name
-    this.record.PhotoName = record.ImageRecord
-      ? this.extractImageName(record.ImageRecord)
-      : "";
-    
-    // Clear any previous file input
-    if (this.fileInput) {
-      this.fileInput.nativeElement.value = '';
+    // Set the image URL if available
+    // Prefer ImageRecord if available, otherwise use PhotoName
+    if (recordCopy.ImageRecord && recordCopy.ImageRecord.trim() !== '') {
+      recordCopy.PhotoName = recordCopy.ImageRecord.trim();
+    } else if (recordCopy.PhotoName && recordCopy.PhotoName.trim() !== '') {
+      recordCopy.ImageRecord = recordCopy.PhotoName.trim();
+    } else {
+      recordCopy.PhotoName = '';
+      recordCopy.ImageRecord = '';
     }
-    this.fileSelected = false;
     
     // Set the group information
-    if (record.GroupId) {
+    if (recordCopy.GroupId) {
       const selectedGroup = this.groups.find(
-        (g) => g.IdGroup === record.GroupId
+        (g) => g.IdGroup === recordCopy.GroupId || g.idGroup === recordCopy.GroupId
       );
       if (selectedGroup) {
-        this.record.GroupName = selectedGroup.NameGroup;
+        recordCopy.GroupName = selectedGroup.NameGroup || selectedGroup.nameGroup || '';
       }
     }
+    
+    // Update the component's record
+    this.record = recordCopy;
     
     // Scroll to form for better UX
     setTimeout(() => {
@@ -522,6 +608,12 @@ export class RecordsComponent implements OnInit {
   }
 
   cancelEdition() {
+    // Reset the form first
+    if (this.form) {
+      this.form.resetForm();
+    }
+    
+    // Reset the record object
     this.record = {
       IdRecord: 0,
       TitleRecord: "",
@@ -532,10 +624,14 @@ export class RecordsComponent implements OnInit {
       Price: 0,
       stock: 0,
       Discontinued: false,
-      GroupId: null,
+      GroupId: null,  // This will make the default option selected
       GroupName: "",
       NameGroup: "",
     };
+    
+    // Reset any form control states
+    this.visibleError = false;
+    this.errorMessage = "";
   }
 
   controlError(err: any) {

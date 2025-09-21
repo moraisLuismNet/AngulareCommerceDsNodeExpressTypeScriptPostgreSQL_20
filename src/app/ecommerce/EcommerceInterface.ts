@@ -11,7 +11,7 @@ export interface IGroup {
   Photo?: File | null;
   PhotoName?: string | null;
   TotalRecords?: number;
-  MusicGenreId: number;
+  MusicGenreId: number | string;  
   MusicGenreName: string;
   MusicGenre: string;
 }

@@ -70,10 +70,14 @@ export class RecordsService {
       formData.append("YearOfPublication", "");
     }
     
-    // Only append photo if it exists
+    // Handle photo upload if a new photo was selected
     if (record.Photo) {
       formData.append("Photo", record.Photo, record.Photo.name || 'record-photo');
     }
+    
+    // Always include PhotoName, even if it's an empty string
+    // This ensures the backend knows to clear the image if needed
+    formData.append("PhotoName", record.PhotoName || '');
     
     formData.append("Price", record.Price.toString());
     formData.append("Stock", record.stock.toString());
@@ -168,10 +172,11 @@ export class RecordsService {
     // Handle file upload if a new photo was selected
     if (record.Photo) {
       formData.append("Photo", record.Photo, record.PhotoName || 'record-photo');
-    } else if (record.PhotoName) {
-      // If no new photo but we have a photo name, it means keep the existing one
-      formData.append("PhotoName", record.PhotoName);
     }
+    
+    // Always include PhotoName, even if it's an empty string
+    // This ensures the backend knows to clear the image if needed
+    formData.append("PhotoName", record.PhotoName || '');
 
     // Log form data keys for debugging
     const formDataKeys: string[] = [];
@@ -325,26 +330,6 @@ export class RecordsService {
       );
   }
 
-  getHeaders(): HttpHeaders {
-    // First check sessionStorage (where the login component stores it)
-    let token = sessionStorage.getItem('token');
-    
-    // Fall back to localStorage for backward compatibility
-    if (!token) {
-      token = localStorage.getItem('token');
-    }
-    
-    if (!token) {
-      console.error('No authentication token found in sessionStorage or localStorage');
-      return new HttpHeaders();
-    }
-    
-    return new HttpHeaders({
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    });
-  }
-
   decrementStock(idRecord: number): Observable<any> {
     const headers = this.getHeaders();
     const amount = -1;
@@ -386,5 +371,28 @@ export class RecordsService {
           return throwError(() => error);
         })
       );
+  }
+
+  private getHeaders(): HttpHeaders {
+    // First try to get the sessionStorage token
+    let token = sessionStorage.getItem('token');
+    
+    // If not in sessionStorage, try localStorage
+    if (!token) {
+      token = localStorage.getItem('token');
+    }
+    
+    // If no token, return headers without authentication
+    if (!token) {
+      return new HttpHeaders({
+        'Content-Type': 'application/json'
+      });
+    }
+    
+    // If there is a token, include it in the headers
+    return new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
   }
 }
