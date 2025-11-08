@@ -7,7 +7,7 @@
 AngulareCommerceDsNodeExpressTypeScriptPostgreSQL_20/  
 ├───app/  
 │   ├───ecommerce/  
-│   │   ├───Aadmn-orders/  
+│   │   ├───admin-orders/  
 │   │   │   ├───admin-orders.css  
 │   │   │   ├───admin-orders.html  
 │   │   │   └───admin-orders.ts  
@@ -80,7 +80,7 @@ AngulareCommerceDsNodeExpressTypeScriptPostgreSQL_20/
 │   ├───environment.development.ts  
 │   └───environment.ts  
 ├───main.ts   
-├───angular.json 
+├───angular.json   
 └───package.json  
 
 ![AngulareCommderceDs](img/01.png)
